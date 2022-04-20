@@ -1,0 +1,136 @@
+// # Editor     : roker
+// # Date       : 05.03.2018
+
+// # Product name: URM V5.0 ultrasonic sensor
+// # Product SKU : SEN0001
+// # Version     : 1.0
+
+// # Description:
+// # The Sketch for scanning 180 degree area 2-800cm detecting range
+// # The sketch for using the URM37 PWM trigger pin mode from DFRobot
+// #   and writes the values to the serialport
+// # Connection:
+// #       Vcc (Arduino)    -> Pin 1 VCC (URM V5.0)
+// #       GND (Arduino)    -> Pin 2 GND (URM V5.0)
+// #       Pin 3 (Arduino)  -> Pin 4 ECHO (URM V5.0)
+// #       Pin 5 (Arduino)  -> Pin 6 COMP/TRIG (URM V5.0)
+
+// # Working Mode: PWM trigger pin  mode.
+
+#include <Wire.h>
+#include <DHT.h> // Including library for dht
+#define DHTPIN 8  
+
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
+DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
+int chk;
+float hum;  //Stores humidity value
+float temp; //Stores temperature value
+
+// MCP9808 I2C address is 0x18(24)
+#define Addr 0x18
+int URECHO = 3;         // PWM Output 0-50000US,Every 50US represent 1cm
+int URTRIG = 5;         // trigger pin
+
+unsigned int DistanceMeasured = 0;
+
+void setup()
+{
+  //Serial initialization
+  Serial.begin(9600);                        // Sets the baud rate to 9600
+  // Initialise I2C communication as MASTER  
+  Wire.begin();  
+  dht.begin();
+  pinMode(URTRIG, OUTPUT);                   // A low pull on pin COMP/TRIG
+  digitalWrite(URTRIG, HIGH);                // Set to HIGH
+  pinMode(URECHO, INPUT);                    // Sending Enable PWM mode command
+  delay(500);
+  Serial.println("Init the sensor");
+    
+// for temperature. Start I2C Transmission  
+Wire.beginTransmission(Addr);  
+// Select configuration register  
+Wire.write(0x01);  
+// Continuous conversion mode, Power-up default  
+Wire.write(0x00);  
+Wire.write(0x00);  
+// Stop I2C Transmission  
+Wire.endTransmission();    
+// Start I2C Transmission  
+Wire.beginTransmission(Addr);  
+// Select resolution register  
+Wire.write(0x08);  
+// Resolution = +0.0625 / C  
+Wire.write(0x03);  
+// Stop I2C Transmission  
+Wire.endTransmission();
+
+
+
+}
+void loop()
+{
+  Serial.print("Distance=");
+  digitalWrite(URTRIG, LOW);
+  digitalWrite(URTRIG, HIGH);              
+
+  unsigned long LowLevelTime = pulseIn(URECHO, LOW) ;
+  if (LowLevelTime >= 50000)              // the reading is invalid.
+  {
+    Serial.println("Invalid");
+  }
+  else
+  {
+    DistanceMeasured = LowLevelTime / 50;  // every 50us low level stands for 1cm
+    Serial.print(DistanceMeasured);
+    Serial.println("cm");
+  }
+
+
+unsigned int data[2];    
+// Starts I2C communication  
+Wire.beginTransmission(Addr);  
+// Select data register  
+Wire.write(0x05);  
+// Stop I2C transmission  
+Wire.endTransmission();    
+// Request 2 bytes of data  
+Wire.requestFrom(Addr, 2);    
+// Read 2 bytes of data  
+// temp MSB, temp LSB  
+if(Wire.available() == 2)  
+{    
+data[0] = Wire.read();    
+data[1] = Wire.read();  
+}    
+// Convert the data to 13-bits  
+int temp = ((data[0] & 0x1F) * 256 + data[1]);  
+if(temp > 4095)  
+{    
+temp -= 8192;  
+}  
+float cTemp = temp * 0.0625;  
+float fTemp = cTemp * 1.8 + 32;    
+
+    delay(2000);
+    //Read data and store it to variables hum and temp
+    hum = dht.readHumidity();
+    temp= dht.readTemperature();
+    //Print temp and humidity values to serial monitor
+    Serial.print("Humidity: ");
+    Serial.print(hum);
+    Serial.print(" %, Temp: ");
+    Serial.print(temp);
+    Serial.println(" Celsius");
+    delay(10000); //Delay 2 sec.
+    
+// Output data to screen  
+Serial.print("Temperature in Celsius : ");  
+Serial.println(cTemp);  
+Serial.println(" C");  
+Serial.print("Temperature in Fahrenheit : ");  
+Serial.println(fTemp);  
+Serial.println(" F");  
+delay(200);
+
+}
