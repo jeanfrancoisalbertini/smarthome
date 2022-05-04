@@ -1,0 +1,50 @@
+// Library
+#include <LiquidCrystal.h>
+#define USE_ARDUINO_INTERRUPTS true    
+#include <PulseSensorPlayground.h>      
+
+//  Variables
+const int PulseWire = 0;       // connected to ANALOG PIN 0
+int Threshold = 550;                               
+                               
+PulseSensorPlayground pulseSensor;  
+
+// Initalisation de la librairie
+//LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+const int rs = 2, en = 3, d4 = 4, d5 = 5, d6 = 6, d7 = 7;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+long timeInit=0; //min
+int tHour=1;
+int tMin=26;
+int tSec=35;
+
+
+void setup() {
+  // set up the LCD's number of columns and rows: 
+  lcd.begin(16, 2);
+  analogWrite(8,15);
+  // Affiche un message
+
+  pulseSensor.analogInput(PulseWire);   
+  pulseSensor.setThreshold(Threshold);   
+
+   if (pulseSensor.begin()) {
+    lcd.println("  PulseSensor   ");    
+  }
+  Serial.begin(115200);
+  
+}
+
+void loop() {
+  int myBPM = pulseSensor.getBeatsPerMinute();  
+
+if (pulseSensor.sawStartOfBeat()) {            
+ lcd.print("BPM: ");                        
+ lcd.println(myBPM);  
+ delay(1000);                       
+ lcd.clear();
+}
+
+  delay(20);  
+}
